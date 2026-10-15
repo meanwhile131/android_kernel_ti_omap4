@@ -901,6 +901,15 @@ typedef void (*omap_dispc_isr_t) (void *arg, u32 mask);
 int omap_dispc_register_isr(omap_dispc_isr_t isr, void *arg, u32 mask);
 int omap_dispc_unregister_isr(omap_dispc_isr_t isr, void *arg, u32 mask);
 
+/*
+ * omap_dispc_register_isr()/omap_dispc_unregister_isr() program the DISPC
+ * interrupt registers while holding an internal spinlock, so they cannot
+ * power the block up themselves: every caller has to hold a DISPC runtime PM
+ * reference across the call.  These are the helpers used for that.
+ */
+int dispc_runtime_get(void);
+void dispc_runtime_put(void);
+
 int omap_dispc_wait_for_irq_timeout(u32 irqmask, unsigned long timeout);
 int omap_dispc_wait_for_irq_interruptible_timeout(u32 irqmask,
 		unsigned long timeout);

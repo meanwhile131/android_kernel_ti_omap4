@@ -2518,12 +2518,29 @@ int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
 		return -ENODEV;
 	}
 
+	/*
+	 * omap_dispc_register_isr()/unregister_isr() touch DISPC registers
+	 * with the DISPC irq_lock held, so they cannot power the block up
+	 * themselves and the caller must hold a DISPC runtime PM reference.
+	 *
+	 * OMAPFB_ENABLEVSYNC (issued by SurfaceFlinger) can arrive right after
+	 * the display has been unblanked, while the DISPC power domain/clocks
+	 * are still down.  Programming DISPC_IRQENABLE then raises an
+	 * imprecise external abort on the L3 interconnect (TARGET:DSS) and
+	 * panics the kernel.  Power the block up for the duration of the
+	 * register access instead of relying on the display's stale state.
+	 */
+	if (dispc_runtime_get())
+		return -ENODEV;
+
 	if (enable)
 		r = omap_dispc_register_isr(omapfb_vsync_isr, fbdev,
 			masks[ch]);
 	else
 		r = omap_dispc_unregister_isr(omapfb_vsync_isr, fbdev,
 			masks[ch]);
+
+	dispc_runtime_put();
 
 	return r;
 }
