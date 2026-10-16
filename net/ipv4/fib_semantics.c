@@ -540,6 +540,11 @@ static int fib_check_nh(struct fib_config *cfg, struct fib_info *fi,
 	if (nh->nh_gw) {
 		struct fib_result res;
 
+		/* Android's netd specifies an output interface without an explicit onlink
+		 * flag. Accept such gateways as on-link on this platform. */
+		if (nh->nh_oif)
+			nh->nh_flags |= RTNH_F_ONLINK;
+
 		if (nh->nh_flags & RTNH_F_ONLINK) {
 
 			if (cfg->fc_scope >= RT_SCOPE_LINK)

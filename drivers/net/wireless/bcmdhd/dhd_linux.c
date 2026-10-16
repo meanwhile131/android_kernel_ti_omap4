@@ -3772,10 +3772,12 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		bcm_mkiovar("cur_etheraddr", (void *)&ea_addr, ETHER_ADDR_LEN, buf, sizeof(buf));
 		ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, sizeof(buf), TRUE, 0);
 		if (ret < 0) {
-			DHD_ERROR(("%s: can't set MAC address , error=%d\n", __FUNCTION__, ret));
-			return BCME_NOTUP;
+			DHD_ERROR(("%s: can't set MAC address , error=%d (ignored)\n", __FUNCTION__, ret));
+			memcpy(dhd->mac.octet, ea_addr.octet, ETHER_ADDR_LEN);
+			ret = 0;
+		} else {
+			memcpy(dhd->mac.octet, ea_addr.octet, ETHER_ADDR_LEN);
 		}
-		memcpy(dhd->mac.octet, ea_addr.octet, ETHER_ADDR_LEN);
 	} else {
 #endif /* GET_CUSTOM_MAC_ENABLE */
 		/* Get the default device MAC address directly from firmware */
