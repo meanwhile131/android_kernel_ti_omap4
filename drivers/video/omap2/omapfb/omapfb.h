@@ -109,6 +109,7 @@ struct omapfb2_device {
 	} bpp_overrides[10];
 
 	bool vsync_active;
+	bool vsync_pm_held;
 	ktime_t vsync_timestamp;
 	struct work_struct vsync_work;
 };

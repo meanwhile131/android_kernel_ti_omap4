@@ -2529,18 +2529,40 @@ int omapfb_enable_vsync(struct omapfb2_device *fbdev, enum omap_channel ch,
 	 * imprecise external abort on the L3 interconnect (TARGET:DSS) and
 	 * panics the kernel.  Power the block up for the duration of the
 	 * register access instead of relying on the display's stale state.
+	 *
+	 * Keep an extra runtime PM reference held for as long as vsync stays
+	 * enabled: dropping it immediately after registration lets the DISPC
+	 * power domain go down and silently clears DISPC_IRQENABLE, so no
+	 * vsync interrupts are ever delivered and SurfaceFlinger stalls.
 	 */
-	if (dispc_runtime_get())
-		return -ENODEV;
-
-	if (enable)
+	if (enable) {
+		if (!fbdev->vsync_pm_held) {
+			if (dispc_runtime_get())
+				return -ENODEV;
+			fbdev->vsync_pm_held = true;
+		}
 		r = omap_dispc_register_isr(omapfb_vsync_isr, fbdev,
 			masks[ch]);
-	else
+		if (r) {
+			dispc_runtime_put();
+			fbdev->vsync_pm_held = false;
+		}
+	} else {
+		bool need_put = !fbdev->vsync_pm_held;
+
+		if (need_put) {
+			if (dispc_runtime_get())
+				return -ENODEV;
+		}
 		r = omap_dispc_unregister_isr(omapfb_vsync_isr, fbdev,
 			masks[ch]);
-
-	dispc_runtime_put();
+		if (need_put)
+			dispc_runtime_put();
+		if (fbdev->vsync_pm_held) {
+			dispc_runtime_put();
+			fbdev->vsync_pm_held = false;
+		}
+	}
 
 	return r;
 }
